@@ -15,6 +15,7 @@ const adminRoutes = require('./routes/admin.routes');
 const userRoutes = require('./routes/user.routes');
 const paymentRoutes = require('./routes/payment.routes');
 const promoterRoutes = require('./routes/promoter.routes')
+const webenquireRoutes = require('./routes/WebEnquireRoutes')
 const ImageKit = require('imagekit');
 const projectName = process.env.PROJECT_NAME
 
@@ -67,6 +68,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/promoter', promoterRoutes)
+app.use('/api/webenquire', webenquireRoutes)
 
 app.get('/',(req,res) => {
   res.send(`Welcome to ${projectName} Backend`)
