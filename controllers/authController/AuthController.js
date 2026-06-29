@@ -200,7 +200,7 @@ const login = async (req, res) => {
         age: profileData?.age,
         city: profileData?.city,
         type_of_user: profileData?.type_of_user,
-        status: profileData?.status,
+        status: authUser.status || profileData?.status,
       },
       process.env.JWT_SECRET,
       { expiresIn: "24h" }
@@ -234,7 +234,7 @@ const login = async (req, res) => {
         age: profileData?.age,
         city: profileData?.city,
         type_of_user: profileData?.type_of_user,
-        status: profileData?.status,
+        status: authUser.status || profileData?.status,
       },
       message: "Login successful",
     });
