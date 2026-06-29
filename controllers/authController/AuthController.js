@@ -38,11 +38,11 @@ const signUp = async (req, res) => {
     ]);
     const newUserId = lastUser.length ? lastUser[0].user_id + 1 : 1;
     const newRefNo = lastUser.length
-      ? `SGM${String(parseInt(lastUser[0].ref_no.slice(3)) + 1).padStart(
-        3,
+      ? `S${String(parseInt(lastUser[0].ref_no.replace(/\D/g, '')) + 1).padStart(
+        4,
         "0"
       )}`
-      : "SGM001";
+      : "S0001";
 
     // For premium users, set initial status to inactive
     const userStatus = (user_role === "PremiumUser" || user_role === "SilverUser")
