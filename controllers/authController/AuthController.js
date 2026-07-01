@@ -180,10 +180,10 @@ const login = async (req, res) => {
       });
     }
 
-    const validUserRoles = ["user", "FreeUser", "PremiumUser", "SilverUser", "Admin"];
-    const userRole = validUserRoles.includes(authUser.user_role)
-      ? authUser.user_role
-      : "user";
+    const validUserRoles = ["user", "FreeUser", "PremiumUser", "SilverUser", "Admin", "promoter"];
+    const userRole = user
+      ? (validUserRoles.includes(user.user_role) ? user.user_role : "user")
+      : "promoter";
 
     const profileData = await profile.findOne({ registration_no: authUser.ref_no });
 
