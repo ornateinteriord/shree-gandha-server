@@ -13,7 +13,7 @@ const getUserCounts = async (req, res) => {
       profile.countDocuments({ type_of_user: 'FreeUser', status: 'active' }),
       profile.countDocuments({ type_of_user: 'SilverUser',status: 'active' }),
       profile.countDocuments({ type_of_user: 'PremiumUser', status: 'active' }),
-      UserModel.countDocuments({ user_role: 'Assistance', status: { $in: ['pending', 'inactive'] } }),
+      UserModel.countDocuments({ user_role: 'Assistance', status: { $in: ['pending', 'Pending', 'inactive'] } }),
       UserModel.countDocuments({ user_role: 'Assistance', status: 'active' })
     ]);
 

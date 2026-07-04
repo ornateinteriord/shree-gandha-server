@@ -188,7 +188,7 @@ const getAllUserDetails = async (req, res) => {
                 as: "profileData"
               }
             },
-            { $unwind: "$profileData" },
+            { $unwind: { path: "$profileData", preserveNullAndEmptyArrays: true } },
             {
               $addFields: {
                 mobile_no: {
@@ -218,7 +218,12 @@ const getAllUserDetails = async (req, res) => {
                 },
                 // 🔹 Parse registration_date as date for proper sorting
                 registration_date_parsed: {
-                  $toDate: "$profileData.registration_date"
+                  $dateFromString: {
+                    dateString: "$profileData.registration_date",
+                    format: "%m/%d/%Y",
+                    onError: new Date(0),
+                    onNull: new Date(0)
+                  }
                 }
               }
             },
@@ -291,6 +296,7 @@ const getProfilesRenewal = async (req, res) => {
       user_role: { $ne: "admin" },
        user_role: { $ne: "FreeUser" },
       $or: [
+        { status: "Pending" },
         { status: "pending" },
         { status: "inactive" },
         { status: "expires" },
@@ -503,7 +509,12 @@ const getMyMatches = async (req, res) => {
             },
             // Convert registration_date to Date for proper sorting
             registration_date_parsed: {
-              $toDate: "$registration_date"
+              $dateFromString: {
+                dateString: "$registration_date",
+                format: "%m/%d/%Y",
+                onError: new Date(0),
+                onNull: new Date(0)
+              }
             }
           }
         },
@@ -777,7 +788,12 @@ const getAllUserImageVerification = async (req, res) => {
             {
               $addFields: {
                 registration_date_parsed: {
-                  $toDate: "$profileData.registration_date"
+                  $dateFromString: {
+                    dateString: "$profileData.registration_date",
+                    format: "%m/%d/%Y",
+                    onError: new Date(0),
+                    onNull: new Date(0)
+                  }
                 }
               }
             },

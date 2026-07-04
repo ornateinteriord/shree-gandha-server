@@ -17,10 +17,10 @@ const signUp = async (req, res) => {
     // If user already exists AND is inactive AND this is a paid plan retry — update instead of reject
     const isPaidPlan = user_role === "PremiumUser" || user_role === "SilverUser";
     if (existingUser) {
-      if (existingUser.status === "inactive" && isPaidPlan) {
-        // Update existing inactive user with latest form data
-        await UserModel.updateOne({ username }, { $set: { password, user_role, status: "inactive", ...otherDetails } });
-        await profile.updateOne({ email_id: username }, { $set: { type_of_user: user_role, status: "inactive", ...otherDetails } });
+      if ((existingUser.status === "inactive" || existingUser.status === "Pending" || existingUser.status === "pending") && isPaidPlan) {
+        // Update existing inactive/pending user with latest form data
+        await UserModel.updateOne({ username }, { $set: { password, user_role, status: "Pending", ...otherDetails } });
+        await profile.updateOne({ email_id: username }, { $set: { type_of_user: user_role, status: "Pending", ...otherDetails } });
 
         const token = jwt.sign(
           { user_id: existingUser.user_id, username, user_role, ref_no: existingUser.ref_no },
@@ -44,10 +44,8 @@ const signUp = async (req, res) => {
       )}`
       : "S0001";
 
-    // For premium users, set initial status to inactive
-    const userStatus = (user_role === "PremiumUser" || user_role === "SilverUser")
-      ? (status || "inactive")
-      : "inactive";
+    // For new users, set initial status to Pending
+    const userStatus = status || "Pending";
 
     const newUser = new UserModel({
       user_id: newUserId,
@@ -173,9 +171,10 @@ const login = async (req, res) => {
 
     // Check if user account is active
     if (user && user.status !== "active") {
+      const isPending = user.status === "Pending" || user.status === "pending" || user.status === "inactive";
       return res.status(403).json({
         success: false,
-        message: "Your account is not yet activated. Please wait for admin approval.",
+        message: isPending ? "Member under pending approval by admin." : "Your account is not yet activated. Please wait for admin approval.",
         accountStatus: user.status
       });
     }

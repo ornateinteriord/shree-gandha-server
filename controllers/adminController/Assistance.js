@@ -8,7 +8,7 @@ const AssistancePending = async (req, res) => {
     const { page, pageSize } = getPaginationParams(req);
     
     const filter = {
-      status: { $in: ['inactive', 'pending'] },
+      status: { $in: ['inactive', 'pending', 'Pending'] },
       type_of_user: "Assistance"
     };
 

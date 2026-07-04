@@ -10,7 +10,7 @@ const UserSchema = new mongoose.Schema({
     required: true,
     default: 'FreeUser'
   },
-  status: { type: String, default: "inactive" },
+  status: { type: String, default: "Pending" },
   UpdateStatus: { type: String,default: "not updated" },
   counter: { type: Number, default: 0 },
   last_loggedin: { type: String }, 
