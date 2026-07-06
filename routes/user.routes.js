@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getProfileByRegistrationNo, updateProfile, getAllUserDetails, changePassword, searchUsersByInput, getMyMatches, DeleteImage } = require('../controllers/profileController');
+const { getProfileByRegistrationNo, updateProfile, getAllUserDetails, changePassword, searchUsersByInput, getMyMatches, DeleteImage, submitQrPayment } = require('../controllers/profileController');
 const authenticateToken = require('../middleware/auth.middleware');
 const {expressInterest,getSentInterests,getInterestStatus,updateInterestStatus,getReceivedInterests,getAcceptedInterests, cancelInterestRequest, getInterestCounts, getAcceptedConnections} = require('../controllers/intrestController/interestController');
 const IncompletePayment = require('../models/IncompletePayment');
@@ -9,6 +9,7 @@ const IncompletePayment = require('../models/IncompletePayment');
 router.get('/profile/:registration_no', authenticateToken, getProfileByRegistrationNo);
 router.put('/update-profile/:registration_no',  updateProfile);
 router.post('/all-users-profiles', authenticateToken, getAllUserDetails);
+router.post('/submit-qr-payment', submitQrPayment);
 
 // Interest routes (with authentication and consistent naming)
 router.post("/interest", authenticateToken, expressInterest);

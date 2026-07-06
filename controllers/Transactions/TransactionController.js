@@ -1,5 +1,10 @@
+const mongoose = require("mongoose");
 const AssistanceTransactionModel = require("../../models/Transactions/AssistanceTransaction");
 const TransactionModel = require("../../models/Transactions/OnlineTransaction");
+const Profile = require("../../models/profile");
+const UserModel = require("../../models/user");
+const { getActiveMessage } = require("../../utils/EmailMessages");
+const { sendMail } = require("../../utils/EmailService");
 
 const getAllAssistanceTransactions = async (req, res) => {
     try {
@@ -37,13 +42,31 @@ const getAllAssistanceTransactions = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
 const getOnlineAllTransactions = async (req, res) => {
   try {
-    const transactions = await TransactionModel.find();
+    const transactions = await TransactionModel.find({
+      is_handled: { $ne: true },
+      PG_id: { $ne: "ADMIN_UPGRADE" },
+      mode: { $ne: "Admin" }
+    }).sort({ transaction_id: -1, transcation_id: -1, createdAt: -1, date: -1 });
+
+    const regNos = transactions.map(t => t.registration_no).filter(Boolean);
+    const activeProfiles = await Profile.find({ registration_no: { $in: regNos }, status: "active" }).select("registration_no updatedAt");
+    const activeMap = new Map(activeProfiles.map(p => [p.registration_no, new Date(p.updatedAt || 0).getTime()]));
+
+    const filteredTransactions = transactions.filter(t => {
+      if (!t.registration_no || !activeMap.has(t.registration_no)) return true;
+      const activeTimestamp = activeMap.get(t.registration_no);
+      const txnTimestamp = new Date(t.createdAt || t.date || 0).getTime();
+      // If transaction was created BEFORE or when user was activated, hide it!
+      // Only show if the transaction was created AFTER they were already active (i.e. 2nd or 3rd time upgrade)
+      return txnTimestamp > activeTimestamp + 10000;
+    });
    
     res.status(200).json({
       success: true,
-      data: transactions,
+      data: filteredTransactions,
     });
   } catch (error) {
     res.status(500).json({
@@ -54,6 +77,96 @@ const getOnlineAllTransactions = async (req, res) => {
   }
 };
 
-module.exports ={getAllAssistanceTransactions,
-    getOnlineAllTransactions
-} ;
+const updateOnlineTransactionStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, activateUser, usertype } = req.body;
+
+    let query = {};
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      query = { _id: id };
+    } else if (!isNaN(Number(id))) {
+      query = { $or: [{ transaction_id: Number(id) }, { transcation_id: Number(id) }] };
+    } else {
+      return res.status(400).json({ success: false, message: "Invalid transaction ID format" });
+    }
+
+    const transaction = await TransactionModel.findOne(query);
+    if (!transaction) {
+      return res.status(404).json({ success: false, message: "Transaction not found" });
+    }
+
+    if (status) transaction.status = status;
+    if (usertype) transaction.usertype = usertype;
+    transaction.is_handled = true;
+    await transaction.save();
+
+    let profileUpdated = false;
+    if (activateUser && transaction.registration_no) {
+      await TransactionModel.updateMany({ registration_no: transaction.registration_no }, { $set: { is_handled: true } });
+
+      const profile = await Profile.findOne({ registration_no: transaction.registration_no });
+      if (profile) {
+        const today = new Date();
+        let updatedExpiryDate = new Date();
+        const targetUserType = usertype || transaction.usertype || "SilverUser";
+
+        if (targetUserType === "SilverUser" || targetUserType === "paidSilver") {
+          updatedExpiryDate.setMonth(today.getMonth() + 6);
+        } else if (targetUserType === "PremiumUser" || targetUserType === "paidPremium") {
+          updatedExpiryDate.setFullYear(today.getFullYear() + 1);
+        }
+
+        const oldStatus = profile.status;
+        const finalUserType = (targetUserType === "paidSilver") ? "SilverUser" : (targetUserType === "paidPremium") ? "PremiumUser" : targetUserType;
+
+        const updatedProfile = await Profile.findOneAndUpdate(
+          { registration_no: transaction.registration_no },
+          {
+            $set: {
+              type_of_user: finalUserType,
+              expiry_date: updatedExpiryDate,
+              status: "active",
+            },
+          },
+          { new: true }
+        );
+
+        await UserModel.updateOne(
+          { ref_no: transaction.registration_no },
+          { $set: { user_role: finalUserType, status: "active" } }
+        );
+
+        if (updatedProfile && oldStatus !== "active") {
+          try {
+            const { activatedSubject, activatedMessage } = getActiveMessage(updatedProfile);
+            if (activatedSubject && activatedMessage) {
+              await sendMail(updatedProfile.email_id, activatedSubject, activatedMessage);
+            }
+          } catch (emailErr) {
+            console.error("Failed to send activation email during transaction update:", emailErr.message);
+          }
+        }
+        profileUpdated = true;
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: profileUpdated ? "Transaction updated and user membership activated successfully" : "Transaction updated successfully",
+      transaction,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to update transaction status",
+      error: error.message,
+    });
+  }
+};
+
+module.exports = {
+  getAllAssistanceTransactions,
+  getOnlineAllTransactions,
+  updateOnlineTransactionStatus
+};

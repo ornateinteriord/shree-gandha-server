@@ -6,7 +6,8 @@ const checkRole = require('../middleware/roles.middleware');
 const { getPromotersTransactions, getPromoters, getPromotersEarnings, updatePromoterStatus, getPromoterUserStats, getUsersByPromoter, getAllPromotersAllData } = require('../controllers/promoters/PromotersController');
 const {
   getAllAssistanceTransactions,
-  getOnlineAllTransactions
+  getOnlineAllTransactions,
+  updateOnlineTransactionStatus
 } = require('../controllers/Transactions/TransactionController');
 const { getAllNews, addNews } = require('../controllers/news/NewsController');
 const { getUserCounts } = require('../controllers/adminController/DashboardStats');
@@ -25,6 +26,7 @@ router.get("/all-promoter-users/:promoter_id",authenticateToken,checkRole("Admin
 router.get('/all-promoters-transactions',authenticateToken,checkRole("Admin"),getPromotersTransactions)
 router.get('/all-Assistance-transactions', authenticateToken, checkRole("Admin"), getAllAssistanceTransactions);
 router.get("/online-transactions", authenticateToken, checkRole("Admin"), getOnlineAllTransactions);
+router.put("/online-transactions/:id/update-status", authenticateToken, checkRole("Admin"), updateOnlineTransactionStatus);
 router.get("/all-news",authenticateToken, checkRole("Admin"), getAllNews);
 router.post("/add-news",authenticateToken, checkRole("Admin"), addNews);
 router.put("/promoters/:id/status",authenticateToken,checkRole("Admin"),updatePromoterStatus);

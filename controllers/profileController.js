@@ -691,8 +691,8 @@ const upgradeUser = async (req, res) => {
       });
     }
 
-     const today = new Date();
-    let updatedExpiryDate = today;
+    const today = new Date();
+    let updatedExpiryDate = new Date();
 
     if (userType === "SilverUser") {
       updatedExpiryDate.setMonth(today.getMonth() + 6);
@@ -700,33 +700,64 @@ const upgradeUser = async (req, res) => {
       updatedExpiryDate.setFullYear(today.getFullYear() + 1);
     }
 
+    let finalAmount = Number(amountPaid);
+    if (isNaN(finalAmount) || typeof amountPaid === "undefined" || amountPaid === "" || finalAmount === 0) {
+      if (userType === "SilverUser") finalAmount = 799;
+      else if (userType === "PremiumUser") finalAmount = 999;
+      else finalAmount = 0;
+    }
+
+    const lastTrans = await TransactionModel.findOne({}).sort({ transaction_id: -1, transcation_id: -1 }).lean();
+    const lastId = lastTrans?.transaction_id || lastTrans?.transcation_id || 0;
+    const nextId = Number(lastId) + 1;
+
+    await TransactionModel.updateMany({ registration_no }, { $set: { is_handled: true } });
+
     const newTransaction = new TransactionModel({
       registration_no,
-      PG_id: "", 
-      bank_ref_num: referenceNumber,
-      mode: paidType,
-      amount: amountPaid,
+      transaction_id: nextId,
+      transcation_id: nextId,
+      PG_id: "ADMIN_UPGRADE", 
+      bank_ref_num: referenceNumber || "ADMIN_UPGRADE",
+      mode: paidType || "Admin",
+      amount: finalAmount,
       status: "success",
-      orderno: "", 
+      orderno: `ADM_${Date.now()}`, 
       usertype: userType,
+      is_handled: true,
     });
     await newTransaction.save();
 
-    await Profile.updateOne(
+    const oldStatus = profile.status;
+
+    const updatedProfile = await Profile.findOneAndUpdate(
       { registration_no },
       {
         $set: {
           type_of_user: userType,
           expiry_date: updatedExpiryDate,
+          status: "active",
         },
-      }
+      },
+      { new: true }
     );
 
     // 6️⃣ Update user_tbl (find by ref_no == registration_no)
     await UserModel.updateOne(
       { ref_no: registration_no },
-      { $set: { user_role: userType } }
+      { $set: { user_role: userType, status: "active" } }
     );
+
+    if (updatedProfile && oldStatus !== "active") {
+      try {
+        const { activatedSubject, activatedMessage } = getActiveMessage(updatedProfile);
+        if (activatedSubject && activatedMessage) {
+          await sendMail(updatedProfile.email_id, activatedSubject, activatedMessage);
+        }
+      } catch (emailErr) {
+        console.error("Failed to send activation email during admin upgrade:", emailErr.message);
+      }
+    }
 
     return res.status(200).json({
       success: true,
@@ -735,6 +766,7 @@ const upgradeUser = async (req, res) => {
         registration_no,
         userType,
         expiry_date: updatedExpiryDate,
+        status: "active",
       },
     });
   } catch (error) {
@@ -812,6 +844,7 @@ const getAllUserImageVerification = async (req, res) => {
                 }
               }
             },
+            { $sort: { registration_date_parsed: -1, _id: -1 } },
             {
               $project: {
                 _id: 0,
@@ -827,7 +860,6 @@ const getAllUserImageVerification = async (req, res) => {
                 registration_date: 1
               }
             },
-            { $sort: { registration_date_parsed: -1 } },
             { $skip: page * pageSize },
             { $limit: pageSize }
           ]
@@ -886,6 +918,58 @@ const changePassword = async (req, res) => {
   }
 };
 
+const submitQrPayment = async (req, res) => {
+  try {
+    const { registration_no, user_id, planName, amount } = req.body;
+
+    let query = {};
+    if (registration_no) query.registration_no = registration_no;
+    else if (user_id) query._id = user_id;
+    else return res.status(400).json({ success: false, message: "User identification required" });
+
+    const profile = await Profile.findOne(query);
+    if (!profile) {
+      return res.status(404).json({ success: false, message: "User profile not found" });
+    }
+
+    const regNo = profile.registration_no;
+
+    const lastTrans = await TransactionModel.findOne({}).sort({ transaction_id: -1, transcation_id: -1 }).lean();
+    const lastId = lastTrans?.transaction_id || lastTrans?.transcation_id || 0;
+    const nextId = Number(lastId) + 1;
+
+    let finalAmount = amount || 999;
+    if (planName === "SilverUser" || planName?.includes("Silver")) finalAmount = 799;
+    else if (planName === "PremiumUser" || planName?.includes("Premium")) finalAmount = 999;
+    else if (planName === "Assistance" || planName?.includes("Assistance")) finalAmount = 1499;
+
+    const newTransaction = new TransactionModel({
+      registration_no: regNo,
+      transaction_id: nextId,
+      transcation_id: nextId,
+      PG_id: "ONLINE_QR_PAY",
+      bank_ref_num: "QR_" + Date.now(),
+      mode: "QR_SCAN",
+      amount: finalAmount,
+      status: "PENDING",
+      orderno: `ORD_${Date.now()}`,
+      usertype: planName || "PremiumUser",
+      is_handled: false,
+    });
+
+    await newTransaction.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Payment request submitted successfully",
+      transaction: newTransaction
+    });
+  } catch (error) {
+    console.error("Error submitting QR payment:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getProfileByRegistrationNo,
   updateProfile,
@@ -896,5 +980,6 @@ module.exports = {
   DeleteImage,
   getAllUserImageVerification,
   upgradeUser,
-  getProfilesRenewal
+  getProfilesRenewal,
+  submitQrPayment
 };
