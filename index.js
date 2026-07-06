@@ -89,9 +89,11 @@ app.use((err, req, res, next) => {
     return res.redirect(`${process.env.FRONTEND_URL}/user/userDashboard`);
   }
   
-  res.status(500).json({ 
-    error: 'Internal server error',
-    message: 'An unexpected error occurred'
+  const statusCode = res.statusCode && res.statusCode !== 200 ? res.statusCode : 500;
+  res.status(statusCode).json({ 
+    success: false,
+    error: err.name || 'Server Error',
+    message: err.message || 'An unexpected error occurred'
   });
 });
 

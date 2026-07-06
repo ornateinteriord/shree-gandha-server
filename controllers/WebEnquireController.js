@@ -8,8 +8,10 @@ const createWebEnquire = asyncHandler(async (req, res) => {
   const { lookingFor, age, caste, mobileNumber, email } = req.body;
 
   if (!lookingFor || !age || !caste || !mobileNumber || !email) {
-    res.status(400);
-    throw new Error('Please provide all required fields');
+    return res.status(400).json({
+      success: false,
+      message: 'Please provide all required fields'
+    });
   }
 
   // Check if email or mobile number already exists
@@ -18,11 +20,16 @@ const createWebEnquire = asyncHandler(async (req, res) => {
   });
 
   if (existingEnquiry) {
-    res.status(400);
     if (existingEnquiry.email === email) {
-      throw new Error('This Email ID has already been submitted. Our team will contact you soon.');
+      return res.status(400).json({
+        success: false,
+        message: 'This email ID already exists.'
+      });
     } else {
-      throw new Error('This Mobile Number has already been submitted. Our team will contact you soon.');
+      return res.status(400).json({
+        success: false,
+        message: 'This mobile number already exists.'
+      });
     }
   }
 
@@ -40,8 +47,10 @@ const createWebEnquire = asyncHandler(async (req, res) => {
       data: newEnquire,
     });
   } else {
-    res.status(400);
-    throw new Error('Invalid enquiry data');
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid enquiry data'
+    });
   }
 });
 
