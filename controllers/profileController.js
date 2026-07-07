@@ -7,6 +7,7 @@ const BlurredImages = require("../models/blurredImages");
 const { getPaginationParams } = require("../utils/pagination");
 const { getActiveMessage, getDeactiveMessage, getImageVerifiedMessage } = require("../utils/EmailMessages");
 const { sendMail } = require("../utils/EmailService");
+const { creditPromoterOnAdminAction } = require("./payment.controller");
 
 // Get profile by registration number
 const getProfileByRegistrationNo = async (req, res) => {
@@ -124,6 +125,16 @@ const updateProfile = async (req, res) => {
         }
       } catch (error) {
         console.error(error.message);
+      }
+
+      if (
+        profile.status?.toLowerCase() === "active" ||
+        profile.image_verification?.toLowerCase() === "active" ||
+        status?.toLowerCase() === "active" ||
+        req.body.status?.toLowerCase() === "active"
+      ) {
+        console.log("=== [CONSLODE LOG: UPDATE PROFILE ACTIVATION] Admin activated user:", profile.registration_no, ". Triggering creditPromoterOnAdminAction ===");
+        await creditPromoterOnAdminAction(profile, Date.now().toString(), profile.type_of_user);
       }
     }
 
@@ -245,6 +256,8 @@ const getAllUserDetails = async (req, res) => {
                 }
               }
             },
+            // 🔹 Sort by latest registration and creation timestamp (recent first)
+            { $sort: { registration_date_parsed: -1, _id: -1 } },
             {
               $project: {
                 ...(userRole?.toLowerCase() !== "admin" && { password: 0 }),
@@ -253,8 +266,6 @@ const getAllUserDetails = async (req, res) => {
                 __v: 0
               }
             },
-            // 🔹 Sort by priority, then by latest registration
-            { $sort: { type_priority: 1, registration_date_parsed: -1 } },
             { $skip: page * pageSize },
             { $limit: pageSize }
           ]
@@ -717,12 +728,12 @@ const upgradeUser = async (req, res) => {
       registration_no,
       transaction_id: nextId,
       transcation_id: nextId,
-      PG_id: "ADMIN_UPGRADE", 
-      bank_ref_num: referenceNumber || "ADMIN_UPGRADE",
-      mode: paidType || "Admin",
+      PG_id: Date.now().toString(),
+      bank_ref_num: referenceNumber || Date.now().toString(),
+      mode: "Admin Approval",
       amount: finalAmount,
       status: "success",
-      orderno: `ADM_${Date.now()}`, 
+      orderno: Date.now().toString(),
       usertype: userType,
       is_handled: true,
     });
@@ -757,6 +768,11 @@ const upgradeUser = async (req, res) => {
       } catch (emailErr) {
         console.error("Failed to send activation email during admin upgrade:", emailErr.message);
       }
+    }
+
+    if (updatedProfile) {
+      console.log("=== [CONSLODE LOG: UPGRADE USER ACTIVATION] Admin upgraded user:", updatedProfile.registration_no, ". Triggering creditPromoterOnAdminAction ===");
+      await creditPromoterOnAdminAction(updatedProfile, Date.now().toString(), userType);
     }
 
     return res.status(200).json({
@@ -947,12 +963,12 @@ const submitQrPayment = async (req, res) => {
       registration_no: regNo,
       transaction_id: nextId,
       transcation_id: nextId,
-      PG_id: "ONLINE_QR_PAY",
-      bank_ref_num: "QR_" + Date.now(),
-      mode: "QR_SCAN",
+      PG_id: Date.now().toString(),
+      bank_ref_num: Date.now().toString(),
+      mode: "Admin Approval",
       amount: finalAmount,
       status: "PENDING",
-      orderno: `ORD_${Date.now()}`,
+      orderno: Date.now().toString(),
       usertype: planName || "PremiumUser",
       is_handled: false,
     });

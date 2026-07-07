@@ -38,7 +38,7 @@ const TransactionSchema = new mongoose.Schema({
   status: {
     type: String,
     required: true,
-    default: 'PENDING' // PENDING, TXN_SUCCESS, TXN_FAILURE
+    default: 'PENDING' // PENDING, SUCCESS, FAILURE
   },
   orderno: {
     type: String,
@@ -47,8 +47,7 @@ const TransactionSchema = new mongoose.Schema({
   },
   usertype: {
     type: String,
-    required: true,
-    enum: ['paidSilver', 'paidPremium']
+    required: true
   },
   promocode: {
     type: String,

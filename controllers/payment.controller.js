@@ -6,6 +6,8 @@ const UserModel = require('../models/user');
 const PromotersEarningsModel = require('../models/promoters/PromotersEarnings');
 const IncompletePayment = require('../models/IncompletePayment');
 const PromotersModel = require('../models/promoters/Promoters');
+const PromoterTransactionModel = require('../models/promoters/PromotersTransaction');
+
 
 // Get environment variables
 const CASHFREE_APP_ID = process.env.CASHFREE_APP_ID;
@@ -192,7 +194,7 @@ const verifyPayment = async (req, res) => {
     
     // Check if this order has already been processed
     const existingTransaction = await Transaction.findOne({ orderno: orderId });
-    if (existingTransaction && existingTransaction.status === 'TXN_SUCCESS') {
+    if (existingTransaction && (existingTransaction.status === 'TXN_SUCCESS' || existingTransaction.status === 'SUCCESS' || existingTransaction.status === 'success')) {
       console.log(`Order ${orderId} already processed successfully`);
       return res.json({ 
         success: true, 
@@ -312,7 +314,7 @@ const verifyPayment = async (req, res) => {
             
             // Check if already processed
             const existingTransaction = await Transaction.findOne({ orderno: orderId });
-            if (existingTransaction && existingTransaction.status === 'TXN_SUCCESS') {
+            if (existingTransaction && (existingTransaction.status === 'TXN_SUCCESS' || existingTransaction.status === 'SUCCESS' || existingTransaction.status === 'success')) {
               console.log(`Order ${orderId} already processed successfully`);
               // Mark the incomplete payment as resolved
               await IncompletePayment.updateOne(
@@ -700,7 +702,7 @@ const retryPayment = async (req, res) => {
           
           // Check if already processed
           const existingTransaction = await Transaction.findOne({ orderno: orderId });
-          if (existingTransaction && existingTransaction.status === 'TXN_SUCCESS') {
+          if (existingTransaction && (existingTransaction.status === 'TXN_SUCCESS' || existingTransaction.status === 'SUCCESS' || existingTransaction.status === 'success')) {
             console.log(`Retry: Order ${orderId} already processed successfully`);
             // Mark the incomplete payment as resolved
             await IncompletePayment.updateOne(
@@ -782,7 +784,7 @@ const retryPayment = async (req, res) => {
       
       // Check if already processed
       const existingTransaction = await Transaction.findOne({ orderno: orderId });
-      if (existingTransaction && existingTransaction.status === 'TXN_SUCCESS') {
+      if (existingTransaction && (existingTransaction.status === 'TXN_SUCCESS' || existingTransaction.status === 'SUCCESS' || existingTransaction.status === 'success')) {
         console.log(`Retry: Order ${orderId} already processed successfully`);
         return res.json({ 
           success: true, 
@@ -839,7 +841,7 @@ const retryPayment = async (req, res) => {
       
       // Check if already processed
       const existingTransaction = await Transaction.findOne({ orderno: orderId });
-      if (existingTransaction && existingTransaction.status === 'TXN_SUCCESS') {
+      if (existingTransaction && (existingTransaction.status === 'TXN_SUCCESS' || existingTransaction.status === 'SUCCESS' || existingTransaction.status === 'success')) {
         console.log(`Retry: Order ${orderId} already processed successfully`);
         return res.json({ 
           success: true, 
@@ -939,7 +941,7 @@ const handlePaymentRedirect = async (req, res) => {
     
     // Check if already processed
     const existingTransaction = await Transaction.findOne({ orderno: order_id });
-    if (existingTransaction && existingTransaction.status === 'TXN_SUCCESS') {
+    if (existingTransaction && (existingTransaction.status === 'TXN_SUCCESS' || existingTransaction.status === 'SUCCESS' || existingTransaction.status === 'success')) {
       console.log(`Order ${order_id} already processed successfully`);
       return res.json({ 
         success: true, 
@@ -1050,8 +1052,8 @@ const checkPaymentStatus = async (req, res) => {
     if (existingTransaction) {
       return res.json({ 
         success: true,
-        orderStatus: existingTransaction.status === 'TXN_SUCCESS' ? 'PAID' : 'FAILED',
-        paymentStatus: existingTransaction.status === 'TXN_SUCCESS' ? 'SUCCESS' : 'FAILED',
+        orderStatus: (existingTransaction.status === 'TXN_SUCCESS' || existingTransaction.status === 'SUCCESS' || existingTransaction.status === 'success') ? 'PAID' : 'FAILED',
+        paymentStatus: (existingTransaction.status === 'TXN_SUCCESS' || existingTransaction.status === 'SUCCESS' || existingTransaction.status === 'success') ? 'SUCCESS' : 'FAILED',
         transactionId: existingTransaction.PG_id,
         amount: existingTransaction.amount,
         alreadyProcessed: true
@@ -1345,7 +1347,7 @@ const processSuccessfulPayment = async ({ orderId, paymentId, orderAmount, payme
 
     // Check if transaction already exists to prevent duplicates
     const existingTransaction = await Transaction.findOne({ orderno: orderId });
-    if (existingTransaction && existingTransaction.status === 'TXN_SUCCESS') {
+    if (existingTransaction && (existingTransaction.status === 'TXN_SUCCESS' || existingTransaction.status === 'SUCCESS' || existingTransaction.status === 'success')) {
       console.log(`Transaction for order ${orderId} already exists and is successful`);
       return;
     }
@@ -1420,11 +1422,11 @@ const processSuccessfulPayment = async ({ orderId, paymentId, orderAmount, payme
     let userType, monthsToAdd, paidUserType;
     if (planType === 'premium') {
       userType = 'PremiumUser';
-      paidUserType = 'paidPremium';
+      paidUserType = 'PremiumUser';
       monthsToAdd = 12;
     } else {
       userType = 'SilverUser';
-      paidUserType = 'paidSilver';
+      paidUserType = 'SilverUser';
       monthsToAdd = 6;
     }
 
@@ -1443,7 +1445,7 @@ const processSuccessfulPayment = async ({ orderId, paymentId, orderAmount, payme
       bank_ref_num: paymentData.payment?.bank_reference || '',
       mode: paymentData.payment?.payment_method || 'UPI',
       amount: orderAmount,
-      status: 'TXN_SUCCESS',
+      status: 'SUCCESS',
       orderno: orderId,
       usertype: paidUserType,
       promocode: promocode,
@@ -1590,9 +1592,9 @@ const processFailedPayment = async ({ orderId, paymentId, paymentStatus, payment
           registration_no: userProfile.registration_no,
           PG_id: paymentId,
           amount: paymentData.order?.order_amount || 0,
-          status: 'TXN_FAILURE',
+          status: 'FAILURE',
           orderno: orderId,
-          usertype: 'paidSilver', // Default for failed transactions
+          usertype: 'SilverUser', // Default for failed transactions
           original_amount: paymentData.order?.order_amount || 0
         });
 
@@ -1633,16 +1635,22 @@ const createPromoterEarning = async ({ promocode, userRegistrationNo, userEmail,
 
     // Find promoter details (convert promocode to uppercase as done in promocheck)
     const promoter = await PromotersModel.findOne({ 
-      promoter_id: promocode.toUpperCase(),
-      status: 'active'  // Only look for active promoters
+      promoter_id: { $regex: new RegExp("^" + promocode.trim() + "$", "i") }
     });
     
     if (!promoter) {
-      console.log('Active promoter not found for promocode:', promocode.toUpperCase());
+      console.log('=== [CONSLODE LOG: PROMOTER ERROR] Active promoter not found for promocode:', promocode.toUpperCase(), '===');
       return;
     }
     
-    console.log('Found promoter for earning creation:', promoter.promoter_id);
+    console.log('=== [CONSLODE LOG: PROMOTER FOUND] Found promoter for earning creation:', promoter.promoter_id, '| Name:', promoter.promoter_name, '===');
+
+    // Check if an earning record already exists for this user registration number
+    const existingEarning = await PromotersEarningsModel.findOne({ ref_no: userRegistrationNo });
+    if (existingEarning) {
+      console.log('=== [CONSLODE LOG: EARNING EXISTS] Promoter earning already exists for registration:', userRegistrationNo, '| Amount:', existingEarning.amount_earned, '===');
+      return existingEarning;
+    }
 
     // Generate ID for the new earning record
     let nextId = "1";
@@ -1664,8 +1672,13 @@ const createPromoterEarning = async ({ promocode, userRegistrationNo, userEmail,
       id: nextId,
       referal_by: promocode.toUpperCase(),
       ref_no: userRegistrationNo,
-      emailid: userEmail,
-      mobile: userMobile,
+      emailid: promoter ? promoter.email : userEmail,
+      mobile: promoter ? promoter.mobile : userMobile,
+      promoter_name: promoter ? promoter.promoter_name : '',
+      account_number: promoter ? (promoter.account_number || '') : '',
+      bank_ifsc: promoter ? (promoter.bank_ifsc || '') : '',
+      user_email: userEmail,
+      user_mobile: userMobile,
       amount_earned: '100',  // Fixed amount for now
       transaction_no: transactionNo,
       status: 'pending',
@@ -1676,8 +1689,31 @@ const createPromoterEarning = async ({ promocode, userRegistrationNo, userEmail,
     
     // Using create method instead of new + save
     const savedEarning = await PromotersEarningsModel.create(earningData);
-    console.log('Promoter earning created with ID:', savedEarning.id);
-    console.log('Saved earning data:', savedEarning);
+    console.log('=== [CONSLODE LOG: PROMOTER EARNING SUCCESS] Added ₹100 inside promoter earnings table (promoters_earnings_tbl) for Promoter:', promocode.toUpperCase(), '| User:', userRegistrationNo, '===');
+
+    // Also store the transaction in promoters_transaction_tbl
+    try {
+      const existingPromoterTxn = await PromoterTransactionModel.findOne({ transaction_no: transactionNo });
+      if (!existingPromoterTxn) {
+        let nextPromoterTxnId = "1";
+        const lastPromoterTxn = await PromoterTransactionModel.findOne({}, {}, { sort: { 'id': -1 } });
+        if (lastPromoterTxn && !isNaN(parseInt(lastPromoterTxn.id))) {
+          nextPromoterTxnId = (parseInt(lastPromoterTxn.id) + 1).toString();
+        }
+        await PromoterTransactionModel.create({
+          id: nextPromoterTxnId,
+          promocode: promocode.toUpperCase(),
+          transaction_no: transactionNo || Date.now().toString(),
+          transaction_date: new Date().toISOString().split('T')[0],
+          amount: "100",
+          mode_of_payment: "Online/System",
+          status: "active"
+        });
+        console.log(`=== [CONSLODE LOG: PROMOTER TXN SUCCESS] Added ₹100 inside promoter transaction table (promoters_transaction_tbl) for Promoter: ${promocode.toUpperCase()} ===`);
+      }
+    } catch (promoterTxnErr) {
+      console.error('=== [CONSLODE LOG ERROR] Error saving to promoters_transaction_tbl:', promoterTxnErr, '===');
+    }
 
     // Send email to promoter
     try {
@@ -1706,6 +1742,87 @@ const createPromoterEarning = async ({ promocode, userRegistrationNo, userEmail,
   }
 };
 
+// Helper function to credit promoter when admin upgrades or activates a user
+const creditPromoterOnAdminAction = async (profile, transactionNo, userType) => {
+  try {
+    if (!profile || !profile.registration_no) {
+      return;
+    }
+    const targetType = userType || profile.type_of_user;
+    if (targetType !== "SilverUser" && targetType !== "PremiumUser") {
+      return;
+    }
+
+    // Ensure user transaction is updated/stored in transaction_tbl as active/TXN_SUCCESS
+    try {
+      const existingTxn = await Transaction.findOne({ registration_no: profile.registration_no });
+      if (existingTxn) {
+        await Transaction.updateOne({ registration_no: profile.registration_no }, {
+          $set: {
+            status: "SUCCESS",
+            is_handled: true,
+            usertype: targetType,
+            promocode: profile.refered_by || existingTxn.promocode || null
+          }
+        });
+        console.log(`=== [CONSLODE LOG: ADMIN ACTIVATION] User ${profile.registration_no} activated by admin! Updated existing transaction in transaction_tbl from PENDING to SUCCESS (Active) ===`);
+      } else {
+        let finalAmount = 799;
+        if (targetType === "PremiumUser") finalAmount = 999;
+        
+        const lastTrans = await Transaction.findOne({}).sort({ transaction_id: -1, transcation_id: -1 }).lean();
+        const lastId = lastTrans?.transaction_id || lastTrans?.transcation_id || 0;
+        const nextId = Number(lastId) + 1;
+
+        const newTxn = new Transaction({
+          registration_no: profile.registration_no,
+          transaction_id: nextId,
+          transcation_id: nextId,
+          PG_id: transactionNo || Date.now().toString(),
+          bank_ref_num: transactionNo || Date.now().toString(),
+          mode: "Admin Approval",
+          amount: finalAmount,
+          status: "SUCCESS",
+          orderno: transactionNo || Date.now().toString(),
+          usertype: targetType,
+          promocode: profile.refered_by || null,
+          discount_applied: 0,
+          original_amount: finalAmount,
+          is_handled: true
+        });
+        await newTxn.save();
+        console.log(`=== [CONSLODE LOG: ADMIN ACTIVATION] User ${profile.registration_no} activated by admin! Created new active transaction in transaction_tbl ===`);
+      }
+    } catch (txnErr) {
+      console.error("=== [CONSLODE LOG ERROR] Error storing transaction in transaction_tbl:", txnErr, "===");
+    }
+
+    let promoCode = profile.refered_by;
+    if (!promoCode || !promoCode.trim()) {
+      const userDoc = await UserModel.findOne({ ref_no: profile.registration_no }).lean();
+      if (userDoc && userDoc.refered_by) {
+        promoCode = userDoc.refered_by;
+      }
+    }
+
+    if (!promoCode || !promoCode.trim()) {
+      console.log(`=== [CONSLODE LOG: NO PROMOTER] User ${profile.registration_no} has no refered_by promocode. No promoter earning to credit ===`);
+      return;
+    }
+    console.log(`=== [CONSLODE LOG: CREDITING PROMOTER] Triggering createPromoterEarning for user ${profile.registration_no} (${targetType}) with promocode: ${promoCode} ===`);
+    await createPromoterEarning({
+      promocode: promoCode,
+      userRegistrationNo: profile.registration_no,
+      userEmail: profile.email_id || "admin_action@example.com",
+      userMobile: profile.mobile_no || profile.phone || "0000000000",
+      transactionNo: transactionNo || Date.now().toString(),
+      userType: targetType
+    });
+  } catch (err) {
+    console.error("=== [CONSLODE LOG ERROR] Error in creditPromoterOnAdminAction:", err, "===");
+  }
+};
+
 module.exports = {
   createOrder,
   verifyPayment,
@@ -1718,5 +1835,6 @@ module.exports = {
   saveIncompletePayment,
   processSuccessfulPayment,
   processFailedPayment,
-  createPromoterEarning
+  createPromoterEarning,
+  creditPromoterOnAdminAction
 };

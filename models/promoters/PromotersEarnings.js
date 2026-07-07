@@ -39,6 +39,21 @@ const PromoterEarningsSchema = new mongoose.Schema({
   usertype: {
     type: String,
   },
+  promoter_name: {
+    type: String,
+  },
+  account_number: {
+    type: String,
+  },
+  bank_ifsc: {
+    type: String,
+  },
+  user_email: {
+    type: String,
+  },
+  user_mobile: {
+    type: String,
+  },
 },{ timestamps: true, collection: "promoters_earnings_tbl" });
 
 const PromotersEarningsModel = mongoose.model(

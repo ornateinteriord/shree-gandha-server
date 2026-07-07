@@ -14,6 +14,11 @@ const sendMail = async (email, subject, htmlContent) => {
     return;
   }
 
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS || !process.env.EMAIL_USER.trim() || !process.env.EMAIL_PASS.trim()) {
+    console.log(`=== [EMAIL SKIPPED] Email credentials (EMAIL_USER / EMAIL_PASS) are not set in .env file. Could not send "${subject}" to ${email} ===`);
+    return;
+  }
+
   try {
     const mailOptions = {
       from: `"Girijakalyana" <${process.env.EMAIL_USER}>`,
@@ -24,9 +29,10 @@ const sendMail = async (email, subject, htmlContent) => {
 
    
     await transporter.sendMail(mailOptions);
+    console.log(`=== [EMAIL SENT] Successfully sent "${subject}" to ${email} ===`);
    
   } catch (error) {
-    console.error("Error sending email:", error);
+    console.error("=== [EMAIL ERROR] Error sending email:", error.message || error, "===");
   }
 };
 

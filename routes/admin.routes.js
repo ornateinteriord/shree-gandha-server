@@ -3,7 +3,7 @@ const router = express.Router();
 const { getAllUserDetails, updateProfile, searchUsersByInput, getAllUserImageVerification, upgradeUser, getProfilesRenewal } = require('../controllers/profileController');
 const authenticateToken = require('../middleware/auth.middleware');
 const checkRole = require('../middleware/roles.middleware');
-const { getPromotersTransactions, getPromoters, getPromotersEarnings, updatePromoterStatus, getPromoterUserStats, getUsersByPromoter, getAllPromotersAllData } = require('../controllers/promoters/PromotersController');
+const { getPromotersTransactions, getPromoters, getPromotersEarnings, updatePromoterStatus, getPromoterUserStats, getUsersByPromoter, getAllPromotersAllData, addPromoter } = require('../controllers/promoters/PromotersController');
 const {
   getAllAssistanceTransactions,
   getOnlineAllTransactions,
@@ -21,6 +21,7 @@ router.post('/all-user-details',authenticateToken,checkRole("Admin"),getAllUserD
 router.put('/upgrade-user/:registration_no',authenticateToken,checkRole("Admin"),updateProfile)
 router.put('/reset-password/:registration_no',authenticateToken,checkRole("Admin"),updateProfile)
 router.get('/all-promoters',authenticateToken,checkRole("Admin"),getPromoters)
+router.post('/add-promoter',authenticateToken,checkRole("Admin"),addPromoter)
 router.get('/all-promoters-earnings',authenticateToken,checkRole("Admin"),getPromotersEarnings)
 router.get("/all-promoter-users/:promoter_id",authenticateToken,checkRole("Admin"),getAllPromotersAllData)
 router.get('/all-promoters-transactions',authenticateToken,checkRole("Admin"),getPromotersTransactions)

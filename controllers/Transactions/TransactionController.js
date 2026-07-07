@@ -5,6 +5,7 @@ const Profile = require("../../models/profile");
 const UserModel = require("../../models/user");
 const { getActiveMessage } = require("../../utils/EmailMessages");
 const { sendMail } = require("../../utils/EmailService");
+const { creditPromoterOnAdminAction } = require("../payment.controller");
 
 const getAllAssistanceTransactions = async (req, res) => {
     try {
@@ -19,6 +20,9 @@ const getAllAssistanceTransactions = async (req, res) => {
             },
             {
                 $unwind: "$userDetails" 
+            },
+            {
+                $sort: { _id: -1, date: -1 }
             },
             {
                 $project: {
@@ -49,7 +53,7 @@ const getOnlineAllTransactions = async (req, res) => {
       is_handled: { $ne: true },
       PG_id: { $ne: "ADMIN_UPGRADE" },
       mode: { $ne: "Admin" }
-    }).sort({ transaction_id: -1, transcation_id: -1, createdAt: -1, date: -1 });
+    }).sort({ _id: -1, createdAt: -1, date: -1 });
 
     const regNos = transactions.map(t => t.registration_no).filter(Boolean);
     const activeProfiles = await Profile.find({ registration_no: { $in: regNos }, status: "active" }).select("registration_no updatedAt");
@@ -118,7 +122,10 @@ const updateOnlineTransactionStatus = async (req, res) => {
         }
 
         const oldStatus = profile.status;
-        const finalUserType = (targetUserType === "paidSilver") ? "SilverUser" : (targetUserType === "paidPremium") ? "PremiumUser" : targetUserType;
+        const finalUserType = (targetUserType === "paidSilver" || targetUserType === "SilverUser") ? "SilverUser" : (targetUserType === "paidPremium" || targetUserType === "PremiumUser") ? "PremiumUser" : targetUserType;
+        if (transaction.usertype === "paidSilver") transaction.usertype = "SilverUser";
+        if (transaction.usertype === "paidPremium") transaction.usertype = "PremiumUser";
+        await transaction.save();
 
         const updatedProfile = await Profile.findOneAndUpdate(
           { registration_no: transaction.registration_no },
@@ -146,6 +153,10 @@ const updateOnlineTransactionStatus = async (req, res) => {
           } catch (emailErr) {
             console.error("Failed to send activation email during transaction update:", emailErr.message);
           }
+        }
+        if (updatedProfile) {
+          console.log("=== [CONSLODE LOG: TRANSACTION APPROVAL] Admin approved transaction for user:", updatedProfile.registration_no, ". Triggering creditPromoterOnAdminAction ===");
+          await creditPromoterOnAdminAction(updatedProfile, Date.now().toString(), finalUserType);
         }
         profileUpdated = true;
       }
