@@ -702,19 +702,27 @@ const upgradeUser = async (req, res) => {
       });
     }
 
+    let targetUserType = userType || "PremiumUser";
+    const lowerType = (targetUserType || "").toLowerCase();
+    if (lowerType === "silveruser" || lowerType === "silver" || lowerType === "paidsilver" || lowerType.includes("silver")) {
+      targetUserType = "SilverUser";
+    } else if (lowerType === "premiumuser" || lowerType === "premium" || lowerType === "paidpremium" || lowerType.includes("premium")) {
+      targetUserType = "PremiumUser";
+    }
+
     const today = new Date();
     let updatedExpiryDate = new Date();
 
-    if (userType === "SilverUser") {
+    if (targetUserType === "SilverUser") {
       updatedExpiryDate.setMonth(today.getMonth() + 6);
-    } else if (userType === "PremiumUser") {
+    } else if (targetUserType === "PremiumUser") {
       updatedExpiryDate.setFullYear(today.getFullYear() + 1);
     }
 
     let finalAmount = Number(amountPaid);
     if (isNaN(finalAmount) || typeof amountPaid === "undefined" || amountPaid === "" || finalAmount === 0) {
-      if (userType === "SilverUser") finalAmount = 799;
-      else if (userType === "PremiumUser") finalAmount = 999;
+      if (targetUserType === "SilverUser") finalAmount = 799;
+      else if (targetUserType === "PremiumUser") finalAmount = 999;
       else finalAmount = 0;
     }
 
@@ -734,7 +742,7 @@ const upgradeUser = async (req, res) => {
       amount: finalAmount,
       status: "success",
       orderno: Date.now().toString(),
-      usertype: userType,
+      usertype: targetUserType,
       is_handled: true,
     });
     await newTransaction.save();
@@ -745,7 +753,7 @@ const upgradeUser = async (req, res) => {
       { registration_no },
       {
         $set: {
-          type_of_user: userType,
+          type_of_user: targetUserType,
           expiry_date: updatedExpiryDate,
           status: "active",
         },
@@ -756,7 +764,7 @@ const upgradeUser = async (req, res) => {
     // 6️⃣ Update user_tbl (find by ref_no == registration_no)
     await UserModel.updateOne(
       { ref_no: registration_no },
-      { $set: { user_role: userType, status: "active" } }
+      { $set: { user_role: targetUserType, status: "active" } }
     );
 
     if (updatedProfile && oldStatus !== "active") {
@@ -955,9 +963,18 @@ const submitQrPayment = async (req, res) => {
     const nextId = Number(lastId) + 1;
 
     let finalAmount = amount || 999;
-    if (planName === "SilverUser" || planName?.includes("Silver")) finalAmount = 799;
-    else if (planName === "PremiumUser" || planName?.includes("Premium")) finalAmount = 999;
-    else if (planName === "Assistance" || planName?.includes("Assistance")) finalAmount = 1499;
+    const lowerPlan = (planName || "").toLowerCase();
+    let targetUserType = planName || "PremiumUser";
+    if (lowerPlan === "silveruser" || lowerPlan === "silver" || lowerPlan.includes("silver")) {
+      finalAmount = amount || 799;
+      targetUserType = "SilverUser";
+    } else if (lowerPlan === "premiumuser" || lowerPlan === "premium" || lowerPlan.includes("premium")) {
+      finalAmount = amount || 999;
+      targetUserType = "PremiumUser";
+    } else if (lowerPlan === "assistance" || lowerPlan.includes("assistance")) {
+      finalAmount = amount || 1499;
+      targetUserType = "Assistance";
+    }
 
     const newTransaction = new TransactionModel({
       registration_no: regNo,
@@ -969,7 +986,7 @@ const submitQrPayment = async (req, res) => {
       amount: finalAmount,
       status: "PENDING",
       orderno: Date.now().toString(),
-      usertype: planName || "PremiumUser",
+      usertype: targetUserType,
       is_handled: false,
     });
 

@@ -113,19 +113,22 @@ const updateOnlineTransactionStatus = async (req, res) => {
       if (profile) {
         const today = new Date();
         let updatedExpiryDate = new Date();
-        const targetUserType = usertype || transaction.usertype || "SilverUser";
-
-        if (targetUserType === "SilverUser" || targetUserType === "paidSilver") {
+        const rawTargetUserType = usertype || transaction.usertype || "SilverUser";
+        const lowerTarget = (rawTargetUserType || "").toLowerCase();
+        let finalUserType = rawTargetUserType;
+        if (lowerTarget === "silveruser" || lowerTarget === "paidsilver" || lowerTarget === "silver" || lowerTarget.includes("silver")) {
+          finalUserType = "SilverUser";
           updatedExpiryDate.setMonth(today.getMonth() + 6);
-        } else if (targetUserType === "PremiumUser" || targetUserType === "paidPremium") {
+        } else if (lowerTarget === "premiumuser" || lowerTarget === "paidpremium" || lowerTarget === "premium" || lowerTarget.includes("premium")) {
+          finalUserType = "PremiumUser";
           updatedExpiryDate.setFullYear(today.getFullYear() + 1);
         }
 
         const oldStatus = profile.status;
-        const finalUserType = (targetUserType === "paidSilver" || targetUserType === "SilverUser") ? "SilverUser" : (targetUserType === "paidPremium" || targetUserType === "PremiumUser") ? "PremiumUser" : targetUserType;
-        if (transaction.usertype === "paidSilver") transaction.usertype = "SilverUser";
-        if (transaction.usertype === "paidPremium") transaction.usertype = "PremiumUser";
-        await transaction.save();
+        if (transaction.usertype !== finalUserType) {
+          transaction.usertype = finalUserType;
+          await transaction.save();
+        }
 
         const updatedProfile = await Profile.findOneAndUpdate(
           { registration_no: transaction.registration_no },

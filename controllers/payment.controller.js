@@ -1748,7 +1748,14 @@ const creditPromoterOnAdminAction = async (profile, transactionNo, userType) => 
     if (!profile || !profile.registration_no) {
       return;
     }
-    const targetType = userType || profile.type_of_user;
+    let targetType = userType || profile.type_of_user;
+    const lowerType = (targetType || "").toLowerCase();
+    if (lowerType === "silveruser" || lowerType === "silver" || lowerType === "paidsilver" || lowerType.includes("silver")) {
+      targetType = "SilverUser";
+    } else if (lowerType === "premiumuser" || lowerType === "premium" || lowerType === "paidpremium" || lowerType.includes("premium")) {
+      targetType = "PremiumUser";
+    }
+
     if (targetType !== "SilverUser" && targetType !== "PremiumUser") {
       return;
     }
