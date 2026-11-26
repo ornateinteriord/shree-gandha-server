@@ -24,6 +24,7 @@
   },
   "scripts": {
     "start": "node index.js",
+    "deploy": "npx --yes wrangler deploy",
     "dev": "nodemon index.js"
   },
   "name": "girijakalyana-backend",
