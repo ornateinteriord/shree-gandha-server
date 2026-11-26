@@ -24,12 +24,13 @@
   },
   "scripts": {
     "start": "node index.js",
+    "build": "echo \"No build step required\"",
     "deploy": "npx --yes wrangler deploy",
     "dev": "nodemon index.js"
   },
   "name": "girijakalyana-backend",
   "version": "1.0.0",
-  "description": "��#\u0000 \u0000G\u0000i\u0000r\u0000i\u0000j\u0000a\u0000k\u0000a\u0000l\u0000y\u0000a\u0000n\u0000a\u0000-\u0000B\u0000a\u0000c\u0000k\u0000e\u0000n\u0000d\u0000\r\u0000 \u0000",
+  "description": "Girijakalyana Backend",
   "main": "index.js",
   "repository": {
     "type": "git",
